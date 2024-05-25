@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rmbprxg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 // const uri = "mongodb+srv://<username>:<password>@cluster0.rmbprxg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
@@ -28,9 +28,25 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
+        const userCollection = client.db("bistroDb").collection("users");
         const menuCollection = client.db("bistroDb").collection("menu");
         const reviewCollection = client.db("bistroDb").collection("reviews");
         const cartCollection = client.db("bistroDb").collection("carts");
+
+
+        // user related api
+        app.post('/users', async(req, res) =>{
+           const user = req.body;
+        //  insert email if user does not exists:
+        //  you can do this many ways (1. email unique, 2. upsert, 3. simple checking)
+            const query = {email: user.email}
+            const existingUser = await userCollection.findOne(query);
+            if(existingUser){
+                return res.send({message: 'user already exists', insertedId: null})
+            }
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
 
         app.get('/menu', async(req, res) => {
             const result = await menuCollection.find().toArray();
@@ -54,6 +70,13 @@ async function run() {
         app.post('/carts', async(req, res) => {
             const cartItem = req.body;
             const result = await cartCollection.insertOne(cartItem);
+            res.send(result);
+        })
+
+        app.delete('/carts/:id', async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const result = await cartCollection.deleteOne(query);
             res.send(result);
         })
 
